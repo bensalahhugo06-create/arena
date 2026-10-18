@@ -129,16 +129,30 @@ function parsePlanning(txt){const lines=txt.split(/\r?\n/);const yM=txt.match(/\
   out.shifts.forEach(s=>{if(s.code==="RSF")s.tent=true});
   if(constraints.length)out.notes.push({title:"Contraintes",body:constraints.map(c=>"- "+c).join("\n")});return out}
 let IMP=null;
-function importView(){pSheet("Importer un planning",`<p class="mut">Colle ton planning, dans le même format que d'habitude : une section POSTES puis RENDEZ-VOUS, avec les mois (« Octobre ») et des lignes comme « - Jeu 15 : SH » ou « - Ven 16, 10h00 : kiné ». Tu vérifies l'aperçu avant de valider.</p>
+function importView(){pSheet("Importer un planning",`<p class="mut">Tu viens de l'ancienne app ? Colle simplement le code de transfert. Sinon, colle ton planning, dans le même format que d'habitude : une section POSTES puis RENDEZ-VOUS, avec les mois (« Octobre ») et des lignes comme « - Jeu 15 : SH » ou « - Ven 16, 10h00 : kiné ». Tu vérifies l'aperçu avant de valider.</p>
   <textarea class="nbody" id="imp-txt" placeholder="Colle ton planning ici">${esc(IMP&&IMP.txt||"")}</textarea><button class="btn gold" data-a="pparse">Analyser</button><div id="imp-out"></div>`)}
-function importPreview(){const txt=$("#imp-txt").value;const r=parsePlanning(txt);const P=PL();IMP={txt,r};
+/* Code de transfert venant de l'ancienne app (commence par « TM1: ») */
+function decodeTransfer(txt){try{return JSON.parse(decodeURIComponent(escape(atob(txt.trim().slice(4).replace(/\s/g,"")))))}catch(e){return null}}
+function transferPreview(txt){const d=decodeTransfer(txt);const out=$("#imp-out");if(!d||d.v!==1){out.innerHTML=`<div class="card"><div class="grow"><b>Code illisible.</b><small>Recopie-le en entier depuis l'ancienne app (bouton « Copier le code »).</small></div></div>`;return}
+  const P=PL();const nRdv=(d.rdv||[]).filter(r=>!P.rdv.some(y=>y.date===r.date&&(y.time||"")===(r.time||"")&&nrm(y.title)===nrm(r.title))).length;const nTasks=Object.values(d.tasks||{}).reduce((a,x)=>a+x.length,0);
+  IMP={txt,transfer:d};out.innerHTML=`<div class="card"><div class="grow"><b>Données de l'ancienne app</b><small>${Object.keys(d.shifts||{}).length} jours de planning · ${nRdv} rendez-vous nouveaux · ${nTasks} tâches · ${(d.todo||[]).length} à faire · ${(d.notes||[]).length} notes</small><small>Ce qui est déjà dans cette app est gardé, sans doublon.</small></div></div><button class="btn gold" data-a="papply">Tout importer</button>`}
+function transferApply(d){const P=PL();
+  (d.types||[]).forEach(t=>{if(t&&t.code&&!typeOf(t.code))P.types.push({code:t.code,label:t.label||t.code,start:t.start||"",end:t.end||"",kind:t.kind||""})});
+  Object.entries(d.shifts||{}).forEach(([k,c])=>{if(typeOf(c))P.shifts[k]=c});Object.keys(d.tent||{}).forEach(k=>P.tent[k]=true);
+  Object.entries(d.dnotes||{}).forEach(([k,t])=>{if(t&&!(P.dnotes[k]||"").includes(t))P.dnotes[k]=(P.dnotes[k]?P.dnotes[k]+" · ":"")+t});
+  (d.rdv||[]).forEach(r=>{if(!r.date||!r.title)return;if(P.rdv.some(y=>y.date===r.date&&(y.time||"")===(r.time||"")&&nrm(y.title)===nrm(r.title)))return;P.rdv.push({id:pid(),date:r.date,time:r.time||"",end:r.end||"",title:r.title,place:r.place||"",note:r.note||"",flag:r.flag||""})});
+  Object.entries(d.tasks||{}).forEach(([k,a])=>{(a||[]).forEach(t=>{const cur=P.tasks[k]||(P.tasks[k]=[]);if(!cur.some(y=>nrm(y.text)===nrm(t.text||"")))cur.push({id:pid(),time:t.time||"",text:t.text||"",done:!!t.done})});if(P.tasks[k]&&!P.tasks[k].length)delete P.tasks[k]});
+  (d.todo||[]).forEach(t=>{if(t.text&&!P.todo.some(y=>nrm(y.text)===nrm(t.text)))P.todo.push({id:pid(),text:t.text,done:!!t.done})});
+  (d.notes||[]).forEach(n=>{if((n.title||n.body)&&!P.notes.some(y=>y.title===n.title&&y.body===n.body))P.notes.push({id:pid(),title:n.title||"",body:n.body||"",t:n.t||Date.now()})});
+  if(d.avail&&d.avail.from)P.avail=Object.assign({},P.avail,d.avail);IMP=null;save();showTab("today")}
+function importPreview(){const txt=$("#imp-txt").value;if(/^\s*TM1:/.test(txt))return transferPreview(txt);const r=parsePlanning(txt);const P=PL();IMP={txt,r};
   const exists=x=>P.rdv.some(y=>y.date===x.date&&(y.time===x.time||nrm(y.title)===nrm(x.title)));const changed=r.shifts.filter(s=>P.shifts[s.date]&&P.shifts[s.date]!==s.code);
   r.rdv.forEach(x=>x.dup=exists(x));const todoNew=r.todo.filter(x=>!P.todo.some(y=>nrm(y.text)===nrm(x)));
   $("#imp-out").innerHTML=`<div class="card"><div class="grow"><b>${r.shifts.length} postes · ${r.rdv.filter(x=>!x.dup).length} rendez-vous${r.rdv.some(x=>x.dup)?" (+"+r.rdv.filter(x=>x.dup).length+" déjà là)":""} · ${r.dnotes.length} notes de jour · ${todoNew.length} à faire${r.notes.length?" · 1 note":""}</b>
    ${changed.length?`<small>Changements : ${changed.map(s=>fShort(s.date)+" "+P.shifts[s.date]+" → "+s.code).join(", ")}</small>`:""}${r.issues.length?`<small class="warnt">Non importé, à vérifier : ${r.issues.map(esc).join(" · ")}</small>`:""}</div></div>
    <div class="plist">${r.rdv.map(x=>`<div class="prow"><div class="grow"><b>${esc(x.title)}${x.dup?" · déjà présent":""}</b><small>${fShort(x.date)} · ${hF(x.time)}${x.end?"–"+hF(x.end):""}${x.place?" · "+esc(x.place):""}${x.note?" · "+esc(x.note):""}</small>${x.flag?`<small class="warnt">${x.flag}</small>`:""}</div></div>`).join("")}</div>
    ${r.shifts.length||r.rdv.length||r.todo.length?`<button class="btn gold" data-a="papply">Tout importer</button>`:""}`}
-function importApply(){const P=PL(),r=IMP&&IMP.r;if(!r)return;r.shifts.forEach(s=>{P.shifts[s.date]=s.code;if(s.tent)P.tent[s.date]=true;else delete P.tent[s.date];if(s.note&&!(P.dnotes[s.date]||"").includes(s.note))P.dnotes[s.date]=(P.dnotes[s.date]?P.dnotes[s.date]+" · ":"")+s.note});
+function importApply(){if(IMP&&IMP.transfer)return transferApply(IMP.transfer);const P=PL(),r=IMP&&IMP.r;if(!r)return;r.shifts.forEach(s=>{P.shifts[s.date]=s.code;if(s.tent)P.tent[s.date]=true;else delete P.tent[s.date];if(s.note&&!(P.dnotes[s.date]||"").includes(s.note))P.dnotes[s.date]=(P.dnotes[s.date]?P.dnotes[s.date]+" · ":"")+s.note});
   r.dnotes.forEach(x=>{if(!(P.dnotes[x.date]||"").includes(x.text))P.dnotes[x.date]=(P.dnotes[x.date]?P.dnotes[x.date]+" · ":"")+x.text});
   r.rdv.filter(x=>!x.dup).forEach(x=>P.rdv.push({id:pid(),date:x.date,time:x.time,end:x.end,title:x.title,place:x.place,note:x.note,flag:x.flag}));
   r.todo.forEach(x=>{if(!P.todo.some(y=>nrm(y.text)===nrm(x)))P.todo.push({id:pid(),text:x,done:false})});
