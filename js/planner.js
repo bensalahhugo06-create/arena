@@ -40,7 +40,7 @@ function availText(n=21){const t=tk(),e=addD(t,n-1);let s=`Mes disponibilités d
 /* ---------- onglets ---------- */
 function navSync(){document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.t===S.tab?"page":"false"))}
 function showTab(t){S.tab=t;save();closeLayer();const g=$("#game");if(g)g.remove();navSync();
-  if(t==="play")return home();$("#app").dataset.skin=S.skin;$("#app").innerHTML=`<div class="screen plan">${t==="today"?vToday():t==="agenda"?vAgenda():vNotes()}</div>`}
+  if(t==="play")return home();$("#app").dataset.skin=S.skin;$("#app").innerHTML=`<div class="screen plan">${t==="today"?vToday():t==="agenda"?vAgenda():t==="time"?vTime():vNotes()}</div>`}
 const rerender=()=>showTab(S.tab||"today");
 function rdvRow(r){const d=kD(r.date);return`<div class="prow"><div class="pdate"><b>${d.getDate()}</b><span>${r.date===tk()?"auj.":JRS[d.getDay()].slice(0,3)+"."}</span></div><div class="grow"><b>${esc(r.title)}</b><small>${r.time?hF(r.time)+(r.end?"–"+hF(r.end):""):"journée"}${r.place?" · "+esc(r.place):""}</small>${r.flag?`<small class="warnt">${esc(r.flag)}</small>`:""}${r.note?`<small>${esc(r.note)}</small>`:""}</div><button class="x" data-a="rdel" data-id="${r.id}" aria-label="Supprimer">✕</button></div>`}
 function taskRow(t,k){return`<div class="prow"><button class="chk ${t.done?"on":""}" data-a="tdone" data-k="${k}" data-id="${t.id}" aria-label="Fait">${t.done?"✓":""}</button>${t.time?`<span class="tm">${hF(t.time)}</span>`:""}<span class="grow ${t.done?"done":""}">${esc(t.text)}</span><button class="x" data-a="tdel" data-k="${k}" data-id="${t.id}" aria-label="Supprimer">✕</button></div>`}
@@ -56,6 +56,7 @@ function vToday(){const t=tk(),tm=addD(t,1),P=PL(),s=shiftOn(t),fr=freeOn(t);
   <div class="card pbig">${s?chip(s,P.tent[t]):`<span class="code k-none">–</span>`}<div class="grow"><b>${s?esc(s.label)+(s.start?" · "+hF(s.start)+"–"+hF(s.end):""):"Pas de poste saisi"}</b>${P.dnotes[t]?`<small>${esc(P.dnotes[t])}</small>`:""}<small>${fr.length?"Libre : "+freeTxt(fr):"Plus de créneau libre aujourd'hui"}</small></div></div>
   <div class="sect">Au programme</div><div class="plist">${items.map(i=>i.task?taskRow(i.task,t):`<div class="prow"><span class="tm">${hF(i.t)}</span>${i.h}</div>`).join("")||`<div class="pempty">Rien de prévu aujourd'hui.</div>`}</div>
   <form class="padd" data-f="task" data-k="${t}"><input type="time" name="time" id="ta-time" aria-label="Heure"><input name="text" id="ta-text" placeholder="Ajouter une tâche" aria-label="Tâche"><button class="btn">+</button></form>
+  <div class="sect sh">Mon temps aujourd'hui<button class="btn sm" data-a="tab" data-t="time">Détails</button></div>${trackerMini()}
   <div class="sect">À faire</div><div class="plist">${P.todo.map(x=>taskRow(x,"todo")).join("")||`<div class="pempty">Rien en attente.</div>`}</div>
   <form class="padd" data-f="todo"><input name="text" id="todo-text" placeholder="Ex. appeler le dentiste" aria-label="À faire"><button class="btn">+</button></form>
   <button class="card tmw" data-a="pday" data-k="${tm}"><small>Demain · ${fDay(tm)}</small><b>${s2?esc(s2.label)+(s2.start?" "+hF(s2.start)+"–"+hF(s2.end):""):"Pas de poste saisi"}${r2.length?" · "+r2.map(r=>esc(r.title)+(r.time?" "+hF(r.time):"")).join(", "):""}</b></button>
@@ -133,9 +134,9 @@ function importView(){pSheet("Importer un planning",`<p class="mut">Tu viens de 
   <textarea class="nbody" id="imp-txt" placeholder="Colle ton planning ici">${esc(IMP&&IMP.txt||"")}</textarea><button class="btn gold" data-a="pparse">Analyser</button><div id="imp-out"></div>`)}
 /* Code de transfert venant de l'ancienne app (commence par « TM1: ») */
 function decodeTransfer(txt){try{return JSON.parse(decodeURIComponent(escape(atob(txt.trim().slice(4).replace(/\s/g,"")))))}catch(e){return null}}
-function transferPreview(txt){const d=decodeTransfer(txt);const out=$("#imp-out");if(!d||d.v!==1){out.innerHTML=`<div class="card"><div class="grow"><b>Code illisible.</b><small>Recopie-le en entier depuis l'ancienne app (bouton « Copier le code »).</small></div></div>`;return}
+function transferPreview(txt){const d=decodeTransfer(txt);const out=$("#imp-out");if(!d||!(d.v===1||d.v===2)){out.innerHTML=`<div class="card"><div class="grow"><b>Code illisible.</b><small>Recopie-le en entier depuis l'ancienne app (bouton « Copier le code »).</small></div></div>`;return}
   const P=PL();const nRdv=(d.rdv||[]).filter(r=>!P.rdv.some(y=>y.date===r.date&&(y.time||"")===(r.time||"")&&nrm(y.title)===nrm(r.title))).length;const nTasks=Object.values(d.tasks||{}).reduce((a,x)=>a+x.length,0);
-  IMP={txt,transfer:d};out.innerHTML=`<div class="card"><div class="grow"><b>Données de l'ancienne app</b><small>${Object.keys(d.shifts||{}).length} jours de planning · ${nRdv} rendez-vous nouveaux · ${nTasks} tâches · ${(d.todo||[]).length} à faire · ${(d.notes||[]).length} notes</small><small>Ce qui est déjà dans cette app est gardé, sans doublon.</small></div></div><button class="btn gold" data-a="papply">Tout importer</button>`}
+  IMP={txt,transfer:d};out.innerHTML=`<div class="card"><div class="grow"><b>Données de l'ancienne app</b><small>${(n=>n+" jour"+(n>1?"s":""))(Object.keys(d.shifts||{}).length)} de planning · ${nRdv} rendez-vous nouveau${nRdv>1?"x":""} · ${nTasks} tâche${nTasks>1?"s":""} · ${(d.todo||[]).length} à faire · ${(n=>n+" note"+(n>1?"s":""))((d.notes||[]).length)}${d.time?" · "+(d.time.sessions||[]).length+" session"+((d.time.sessions||[]).length>1?"s":"")+" de temps":""}${d.montage?" · "+Object.keys(d.montage.lessons||{}).length+" leçon"+(Object.keys(d.montage.lessons||{}).length>1?"s":"")+" de montage":""}</small><small>Ce qui est déjà dans cette app est gardé, sans doublon.</small></div></div><button class="btn gold" data-a="papply">Tout importer</button>`}
 function transferApply(d){const P=PL();
   (d.types||[]).forEach(t=>{if(t&&t.code&&!typeOf(t.code))P.types.push({code:t.code,label:t.label||t.code,start:t.start||"",end:t.end||"",kind:t.kind||""})});
   Object.entries(d.shifts||{}).forEach(([k,c])=>{if(typeOf(c))P.shifts[k]=c});Object.keys(d.tent||{}).forEach(k=>P.tent[k]=true);
@@ -144,7 +145,10 @@ function transferApply(d){const P=PL();
   Object.entries(d.tasks||{}).forEach(([k,a])=>{(a||[]).forEach(t=>{const cur=P.tasks[k]||(P.tasks[k]=[]);if(!cur.some(y=>nrm(y.text)===nrm(t.text||"")))cur.push({id:pid(),time:t.time||"",text:t.text||"",done:!!t.done})});if(P.tasks[k]&&!P.tasks[k].length)delete P.tasks[k]});
   (d.todo||[]).forEach(t=>{if(t.text&&!P.todo.some(y=>nrm(y.text)===nrm(t.text)))P.todo.push({id:pid(),text:t.text,done:!!t.done})});
   (d.notes||[]).forEach(n=>{if((n.title||n.body)&&!P.notes.some(y=>y.title===n.title&&y.body===n.body))P.notes.push({id:pid(),title:n.title||"",body:n.body||"",t:n.t||Date.now()})});
-  if(d.avail&&d.avail.from)P.avail=Object.assign({},P.avail,d.avail);IMP=null;save();showTab("today")}
+  if(d.avail&&d.avail.from)P.avail=Object.assign({},P.avail,d.avail);
+  if(d.time&&typeof TM==="function"){const T=TM();const ids=new Set(T.sessions.map(s=>s.id));(d.time.sessions||[]).forEach(s=>{if(s&&s.segs&&s.segs.length&&!ids.has(s.id)&&ACTS.includes(s.act)&&!overlaps(s.segs,null).length)T.sessions.push({id:s.id,act:s.act,segs:s.segs,src:s.src||"chrono",edited:s.edited})});if(d.time.goals)T.goals=Object.assign({},T.goals,d.time.goals);if(d.time.timer&&!T.timer)T.timer=d.time.timer}
+  if(d.montage&&typeof MTS==="function"){const M=MTS();Object.entries(d.montage.lessons||{}).forEach(([id,v])=>{if(MT_BY[id])M.lessons[id]=Object.assign({},v,M.lessons[id]||{})});if(!M.e360.length&&d.montage.e360)M.e360=d.montage.e360}
+  IMP=null;save();showTab("today")}
 function importPreview(){const txt=$("#imp-txt").value;if(/^\s*TM1:/.test(txt))return transferPreview(txt);const r=parsePlanning(txt);const P=PL();IMP={txt,r};
   const exists=x=>P.rdv.some(y=>y.date===x.date&&(y.time===x.time||nrm(y.title)===nrm(x.title)));const changed=r.shifts.filter(s=>P.shifts[s.date]&&P.shifts[s.date]!==s.code);
   r.rdv.forEach(x=>x.dup=exists(x));const todoNew=r.todo.filter(x=>!P.todo.some(y=>nrm(y.text)===nrm(x)));

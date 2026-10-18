@@ -11,7 +11,8 @@ const tierOf=k=>{let t=0;DK[k].tiers.forEach((x,i)=>{if(S.tr[DK[k].tr]>=x.min)t=
 function duelInfo(k){const d=DK[k],T=d.tiers,t=tierOf(k),nx=T[t+1],tr=S.tr[d.tr];
   const hero=`<div class="kinfo"><div class="muted">Niveau : <b style="color:#fff">${esc(T[t].name)}</b></div>${nx?`<div class="road-mini"><div class="lab"><span>Prochain : ${esc(nx.name)}</span><span>${tr} / ${nx.min}</span></div><div class="bar"><i style="width:${Math.round((tr-T[t].min)/(nx.min-T[t].min)*100)}%"></i></div></div>`:""}</div>`;
   return{hero,play:`<button class="play" data-a="${d.play}">DUEL !<small>Premier à 5 points · environ 2 min</small></button>`}}
-const duelHomeInfo=()=>duelInfo("en"),cutHomeInfo=()=>duelInfo("mt");
+const duelHomeInfo=()=>duelInfo("en");
+function cutHomeInfo(){const i=duelInfo("mt");const n=MT_LESSONS.filter(l=>mcKnown(l.id)).length;i.extra=`<button class="tile coursebtn" data-a="course"><b>Cours de montage</b><span class="muted">${n} / ${MT_LESSONS.length} leçons · Editing 360</span></button>`;return i}
 function duelPick(k,used){const d=DK[k],t=tierOf(k),st=S[d.st]||(S[d.st]={});const items=[];
   d.tiers.forEach((tier,ti)=>{if(ti>t)return;tier.q.forEach((q,qi)=>{const key=ti+":"+qi;if(used.has(key))return;const s=st[key]||{ok:0,ko:0};items.push({key,q,w:(ti===t?3:1)*(1+s.ko*2/(1+s.ok*0.3))*(s.ok>=4&&!s.ko?0.4:1)})})});
   let r=Math.random()*items.reduce((a,b)=>a+b.w,0);for(const it of items){r-=it.w;if(r<=0)return it}return items[items.length-1]}
