@@ -1,7 +1,7 @@
 {
-  "name": "Temps Mort Arena",
-  "short_name": "TM Arena",
-  "description": "Japonais, anglais et montage vidéo en jeux : trophées, coffres, duels.",
+  "name": "Temps Mort",
+  "short_name": "Temps Mort",
+  "description": "Ton planning, tes rendez-vous et tes jeux pour apprendre le japonais, l'anglais et le montage.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

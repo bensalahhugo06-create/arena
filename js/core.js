@@ -65,7 +65,7 @@ function resultsHTML(win,r,stars,body,again){return`<div class="center">
 const MODES={kana:{name:"KANA RUSH",sub:"Japonais",glyph:"あ",col:"linear-gradient(180deg,#ffb347,#ff6a00)"},duel:{name:"WORD DUEL",sub:"Anglais",glyph:"EN",col:"linear-gradient(180deg,#7c96ff,#3a57d6)"},cut:{name:"CUT DUEL",sub:"Montage",glyph:"✂",col:"linear-gradient(180deg,#ff8fc8,#ff4fa3)"}};
 function topBar(){const l=level(),b=lvlBase(l),n=lvlBase(l+1);const av=SHOP.avas[S.ava]||SHOP.avas["き"];return`<div class="top"><div class="me"><div class="ava" style="background:linear-gradient(180deg,#fff3,transparent),${av.col}">${S.ava}</div><div class="lvl"><b class="g">Niveau ${l}</b><div class="xpbar"><i style="width:${Math.round((S.xp-b)/(n-b)*100)}%"></i></div></div></div>
   <div class="res">${I.trophy}<span>${totalTr()}</span></div><div class="res">${I.coin}<span>${S.coins}</span></div><div class="res">${I.gem}<span>${S.gems}</span></div></div>`}
-function home(){newQuests();closeLayer();const g=$("#game");if(g)g.remove();
+function home(){S.tab="play";if(typeof navSync==="function")navSync();newQuests();closeLayer();const g=$("#game");if(g)g.remove();
   const m=S.mode,M_=MODES[m];const nx=ROAD.find((r,i)=>totalTr()<r.t);const prevT=[...ROAD].reverse().find(r=>r.t<=totalTr());const p0=prevT?prevT.t:0;
   const pct=nx?Math.round((totalTr()-p0)/(nx.t-p0)*100):100;const qn=(S.quests.list||[]).filter(q=>q.done&&!q.got).length;const rn=ROAD.filter((r,i)=>totalTr()>=r.t&&!S.claimed.includes(i)).length;
   const info=m==="kana"?kanaHomeInfo():m==="duel"?duelHomeInfo():cutHomeInfo();
